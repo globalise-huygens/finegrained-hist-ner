@@ -1,0 +1,17 @@
+{"O": 0, 
+ "B-LOC_NAME": 1, "I-LOC_NAME": 2, 
+ "B-LOC_ADJ": 3, "I-LOC_ADJ": 4, 
+ "B-ETH_REL": 5, "I-ETH_REL": 6, 
+ "B-PER_NAME": 7, "I-PER_NAME": 8, 
+ "B-PRF": 9, "I-PRF": 10, 
+ "B-STATUS": 11, "I-STATUS": 12, 
+ "B-PER_ATTR": 13, "I-PER_ATTR": 14, 
+ "B-SHIP": 15, "I-SHIP": 16, 
+ "B-SHIP_TYPE": 17, "I-SHIP_TYPE": 18,
+ "B-CMTY_NAME": 19, "I-CMTY_NAME": 20,
+ "B-CMTY_QUAL": 21, "I-CMTY_QUAL": 22,
+ "B-CMTY_QUANT": 23, "I-CMTY_QUANT": 24,
+ "B-DATE": 25, "I-DATE": 26,
+ "B-DOC": 27, "I-DOC": 28,
+ "B-ORG": 29, "I-ORG": 30 
+}

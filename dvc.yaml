@@ -1,0 +1,85 @@
+stages:
+  prepare_fold:
+    cmd: python src/preprocessing/dataset.py -i data/annotations/trainA_dev.zip -o
+      data/A fold
+    deps:
+    - data/annotations/trainA_dev.zip
+    - src/preprocessing/dataset.py
+    outs:
+    - data/A/traindata_1.json
+    - data/A/traindata_2.json
+    - data/A/traindata_3.json
+    - data/A/traindata_4.json
+    - data/A/traindata_5.json
+    - data/A/report_fold.json
+  prepare_vocgm:
+    cmd: python src/preprocessing/vocgm_dataset.py create
+    deps:
+    - src/preprocessing/vocgm_dataset.py
+    - src/preprocessing/dataset.py
+    outs:
+    - data/vocgm/train.conll
+    - data/vocgm/validation.conll
+    - data/vocgm/test.conll
+    - data/vocgm/vocgm.json
+    - data/vocgm/vocgm_report.json
+  augment_with_vocgm:
+    cmd: python src/preprocessing/vocgm_dataset.py augment
+    deps:
+    - src/preprocessing/vocgm_dataset.py
+    - data/A/traindata_3.json
+    - data/vocgm/vocgm.json
+    - resources/tagsets/ner_tagset.json
+    - resources/tagsets/vocgm_tagset.json
+    outs:
+    - data/A_vocgm/A_vocgm.json
+    - data/A_vocgm/A_vocgm_report.json
+  augment_with_vocgm_threshold0.05:
+    cmd: python src/preprocessing/vocgm_dataset.py augment -e 0.05 
+      -d A_vocgm_edt005.json -r A_vocgm_edt005_report.json
+    deps:
+    - src/preprocessing/vocgm_dataset.py
+    - data/A/traindata_3.json
+    - data/vocgm/vocgm.json
+    - resources/tagsets/ner_tagset.json
+    - resources/tagsets/vocgm_tagset.json
+    outs:
+    - data/A_vocgm/A_vocgm_edt005.json
+    - data/A_vocgm/A_vocgm_edt005_report.json
+  augment_with_vocgm_threshold0.1:
+    cmd: python src/preprocessing/vocgm_dataset.py augment -e 0.1 
+      -d A_vocgm_edt01.json -r A_vocgm_edt01_report.json
+    deps:
+    - src/preprocessing/vocgm_dataset.py
+    - data/A/traindata_3.json
+    - data/vocgm/vocgm.json
+    - resources/tagsets/ner_tagset.json
+    - resources/tagsets/vocgm_tagset.json
+    outs:
+    - data/A_vocgm/A_vocgm_edt01.json
+    - data/A_vocgm/A_vocgm_edt01_report.json
+  create_AB_dataset:
+    cmd: python src/preprocessing/dataset.py -i data/annotations/trainB_test.zip -o
+      data/AB augment-with-predefined-split -a data/A/traindata_3.json -s data/B 
+    deps:
+    - src/preprocessing/dataset.py
+    - data/annotations/trainB_test.zip
+    - data/A/traindata_3.json
+    outs:
+    - data/B/B.json
+    - data/B/data_report_B.json
+    - data/AB/AB.json
+    - data/AB/data_report_AB.json
+  augment_AB_with_vocgm:
+    cmd: python src/preprocessing/vocgm_dataset.py augment -i data/AB/AB.json -o data/AB_vocgm 
+      -d AB_vocgm.json -r AB_vocgm_report.json
+    deps:
+    - src/preprocessing/vocgm_dataset.py
+    - data/AB/AB.json
+    - data/vocgm/vocgm.json
+    - resources/tagsets/ner_tagset.json
+    - resources/tagsets/vocgm_tagset.json
+    outs:
+    - data/AB_vocgm/AB_vocgm.json
+    - data/AB_vocgm/AB_vocgm_report.json
+

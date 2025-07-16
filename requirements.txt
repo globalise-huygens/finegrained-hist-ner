@@ -1,0 +1,9 @@
+click >= 8.1.7
+datasets >= 2.14.5
+dkpro-cassis >= 0.9.1
+evaluate >= 0.4.0
+jsonargparse[signatures] >= 4.27.7
+seqeval >= 1.2.2
+transformers >= 4.30.2
+lightning >= 2.4.0
+mlflow

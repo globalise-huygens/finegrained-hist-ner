@@ -1,0 +1,15 @@
+{
+    "O": 0,
+    "B-LOC": 1,
+    "I-LOC": 2,
+    "B-LOCderiv": 3,
+    "I-LOCderiv": 4,
+    "B-ORG": 5,
+    "I-ORG": 6,
+    "B-PER": 7,
+    "I-PER": 8,
+    "B-RELderiv": 9,
+    "I-RELderiv": 10,
+    "B-SHP": 11,
+    "I-SHP": 12
+  }
