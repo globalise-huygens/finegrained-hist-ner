@@ -18,5 +18,7 @@ predict() {
 }
 
 cfg=$hdir/cfg/B_ckpt.yaml
+
+# replace with appropriate checkpoint path
 ckpt="${hdir}/mlruns/xxx/xxx/checkpoints/trainB-globertise-epoch=xxx.ckpt"
 predict $cfg B globertise $ckpt

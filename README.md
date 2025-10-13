@@ -25,10 +25,3 @@ data in `data/`.
 
 Finetuning uses [PyTorch Lightning](https://lightning.ai/docs/pytorch/stable/). See `./cfg` for some config files and `./scripts/` for applications.
 
-## Experiment tracking
-
-Experiments are tracked with [MLFlow](https://mlflow.org/). To view run results,
-
-```bash
-(.venv) $ mlflow ui --port 1234
-```
