@@ -44,7 +44,7 @@ The finetuning code uses [PyTorch Lightning](https://lightning.ai/docs/pytorch/s
 
 The test checkpoints of two models are available on HuggingFace:
 
-* [globalise/globalise_NER_token_classification](https://huggingface.co/globalise/globalise_NER_token_classification): model finetuned with gloBERTise on the globalise data (`train A` and `train B`) augmented with the training data of the [voc-missives]() corpus
+* [globalise/globalise_NER_token_classification](https://huggingface.co/globalise/globalise_NER_token_classification): model finetuned with gloBERTise on the globalise data (`train A` and `train B`) augmented with the training data of the [voc-gm-ner](https://research.vu.nl/en/datasets/voc-gm-ner-corpus/) corpus
 * [globalise/globalise_vocgm_NER_token_classification](https://huggingface.co/globalise/globalise_vocgm_NER_token_classification): model finetuned with gloBERTise on the `train A` and `B` sets 
 
 
