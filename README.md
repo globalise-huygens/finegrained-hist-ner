@@ -50,7 +50,6 @@ The test checkpoints of two models are available on HuggingFace:
 
 ## Citation
 
-**NB** Citation to be completed.
 
 ```
 @article{10.63744@DRbhWNTzqNzR,
