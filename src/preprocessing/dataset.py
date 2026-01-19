@@ -354,5 +354,21 @@ def augment_with_predefined_split(
     ds.write_report(f"{reportnamepfx}_{augmented_datasetname}.json")
 
 
+@cli.command()
+@click.pass_obj
+@click.option("-n", "--datasetname", default="globalise")
+@click.option("-r", "--reportname", default="report.json")
+@click.option("-v", "--dummy_validation", is_flag=True)
+def inference_training(ctx, datasetname, reportname, dummy_validation):
+    ds = NerDataset(datasetname, **ctx)
+    instances = ds._get_instances(ds.members)
+    ds._assign(instances, "train")
+    if dummy_validation:  # validation data is a subset of training data and used only for standard DataModule loading (not for actual validation)
+        ds._assign(instances[:32], "validation")
+    ds.report = ds._report()
+    ds.save()
+    ds.write_report(reportname)
+
+
 if __name__ == "__main__":
     cli(obj={})

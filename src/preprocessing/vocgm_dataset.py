@@ -3,6 +3,8 @@ import itertools as it
 import json
 import logging
 import os
+import re
+import requests
 import sys
 import urllib.request
 
@@ -13,43 +15,50 @@ logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 TRAIN_URL = "https://data.yoda.vu.nl:9443/vault-fgw-llc-vocmissives/voc_gm_ner%5B1670857835%5D/original/datasplit_all_standard/train.conll"
 DEV_URL = "https://data.yoda.vu.nl:9443/vault-fgw-llc-vocmissives/voc_gm_ner%5B1670857835%5D/original/datasplit_all_standard/dev.conll"
 TEST_URL = "https://data.yoda.vu.nl:9443/vault-fgw-llc-vocmissives/voc_gm_ner%5B1670857835%5D/original/datasplit_all_standard/test.conll"
+CORPUS_URL = "https://data.yoda.vu.nl:9443/vault-fgw-llc-vocmissives/voc_gm_ner%5B1670857835%5D/original/corpus/"
 LABEL_MAPPING = {
     "LOC": "LOC_NAME",
     "LOCderiv": "LOC_ADJ",
+    "LOCpart": "LOC_ADJ",
     "PER": "PER_NAME",
+    "REL": "ETH_REL",
     "RELderiv": "ETH_REL",
+    "RELpart": "ETH_REL",
     "SHP": "SHIP",
+    "GPE": "ORG",
+    "ORGpart": "ORG",
 }
+TEXT_PTN = re.compile(r"missive_\d+_\d+_text.conll")
 
 
-def missing_classes(base_tagsetpath, vocgm_tagsetpath):
-    with open(base_tagsetpath) as f:
-        base_tagset = json.load(f)
+def missing_classes(globalise_tagsetpath, vocgm_tagsetpath):
+    with open(globalise_tagsetpath) as f:
+        globalise_tagset = json.load(f)
     with open(vocgm_tagsetpath) as f:
         vocgm_tagset = json.load(f)
 
     return [
         v
-        for k, v in base_tagset.items()
+        for k, v in globalise_tagset.items()
         if not any(y == k for y in map_labels(vocgm_tagset.keys(), LABEL_MAPPING))
     ]
 
 
-def missing_file(url, partition, cachedir):
-    return url is not None and not os.path.exists(
-        os.path.join(cachedir, f"{partition}.conll")
-    )
+def missing_file(url, filename, cachedir):
+    return url is not None and not os.path.exists(os.path.join(cachedir, filename))
 
 
-def download(cachedir, train_url, dev_url, test_url):
-    for url, split in [
-        (train_url, "train"),
-        (dev_url, "validation"),
-        (test_url, "test"),
-    ]:
-        if missing_file(url, split, cachedir):
+def download(url_files, cachedir):
+    for url, file in url_files:
+        if missing_file(url, file, cachedir):
             logging.info(f"Downloading {url}")
-            download_file(url, os.path.join(cachedir, f"{split}.conll"))
+            download_file(url, os.path.join(cachedir, file))
+
+
+def historical_missives(corpus_url):
+    r = requests.get(corpus_url)
+    matches = re.findall(TEXT_PTN, r.text)
+    return set(matches)
 
 
 def download_file(url, outpath):
@@ -96,10 +105,13 @@ def map_labels(inputlabels, label_mapping):
     return labels
 
 
-def convert(outputdir, output, reportname, maxtokens):
-    d = {"train": [], "validation": [], "test": []}
-    for split in ["train", "validation", "test"]:
-        d[split] = conll2json(os.path.join(outputdir, f"{split}.conll"), maxtokens)
+def convert(outputdir, split_to_files, output, reportname, maxtokens):
+    d = {split: {"tokens": [], "labels": []} for split in split_to_files}
+    for split in split_to_files:
+        for file in split_to_files[split]:
+            filedict = conll2json(os.path.join(outputdir, file), maxtokens)
+            d[split]["tokens"].extend(filedict["tokens"])
+            d[split]["labels"].extend(filedict["labels"])
 
     with open(os.path.join(outputdir, output), "w") as f:
         json.dump(d, f, ensure_ascii=False)
@@ -150,18 +162,35 @@ def cli():
 @click.option("-d", "--datasetname", type=click.Path(), default="vocgm.json")
 @click.option("-r", "--reportname", type=click.Path(), default="vocgm_report.json")
 @click.option("-m", "--maxtokens", default=240)
-def create(outputdir, datasetname, reportname, maxtokens):
+@click.option(
+    "--standard/--historical",
+    default=True,
+    help="use training data from standard split (default) or historical data from corpus",
+)
+def create(outputdir, datasetname, reportname, maxtokens, standard):
     os.makedirs(outputdir, exist_ok=True)
-    download(outputdir, TRAIN_URL, DEV_URL, TEST_URL)
-    convert(outputdir, datasetname, reportname, maxtokens)
+    if standard:
+        files = [
+            (TRAIN_URL, "train.conll"),
+            (DEV_URL, "validation.conll"),
+            (TEST_URL, "test.conll"),
+        ]
+        split_to_files = {k: [f"{k}.conll"] for k in ["train", "validation", "test"]}
+    else:
+        files = [
+            (f"{CORPUS_URL}{file}", file) for file in historical_missives(CORPUS_URL)
+        ]
+        split_to_files = {"train": [f[1] for f in files]}
+    download(files, outputdir)
+    convert(outputdir, split_to_files, datasetname, reportname, maxtokens)
 
 
 @cli.command()
 @click.option(
     "-i",
     "--input_data_path",
-    default="data/A/traindata_3.json",
-    help="path to reference dataset",
+    default="data/globalise/traindata_3.json",
+    help="path to reference (globalise) dataset",
 )
 @click.option(
     "-a",
@@ -172,21 +201,21 @@ def create(outputdir, datasetname, reportname, maxtokens):
 @click.option(
     "-o",
     "--outdir",
-    default="data/A_vocgm",
+    default="data/globalise_vocgm",
     help="output directory",
 )
-@click.option("-d", "--datasetname", type=click.Path(), default="A_vocgm.json")
+@click.option("-d", "--datasetname", type=click.Path(), default="globalise_vocgm.json")
 @click.option(
     "-r",
     "--reportname",
-    default="A_vocgm_report.json",
+    default="globalise_vocgm_report.json",
     help="name of dataset report",
 )
 @click.option(
     "-s",
-    "--ner_tagsetpath",
+    "--globalise_tagsetpath",
     type=click.Path(),
-    default="resources/tagsets/ner_tagset.json",
+    default="resources/tagsets/globalise_tagset.json",
 )
 @click.option(
     "-t",
@@ -207,7 +236,7 @@ def augment(
     outdir,
     datasetname,
     reportname,
-    ner_tagsetpath,
+    globalise_tagsetpath,
     vocgm_tagsetpath,
     entity_density_threshold,
 ):
@@ -220,7 +249,7 @@ def augment(
         augment_data["train"],
         data["train"],
         float(entity_density_threshold),
-        unk_classes=missing_classes(ner_tagsetpath, vocgm_tagsetpath),
+        unk_classes=missing_classes(globalise_tagsetpath, vocgm_tagsetpath),
     )
     data["train"]["tokens"] = tokenseqs
     data["train"]["labels"] = labelseqs

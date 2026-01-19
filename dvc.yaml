@@ -24,36 +24,36 @@ stages:
     - data/vocgm/vocgm.json
     - data/vocgm/vocgm_report.json
   augment_with_vocgm:
-    cmd: python src/preprocessing/vocgm_dataset.py augment
+    cmd: python src/preprocessing/vocgm_dataset.py augment -i data/A/traindata_3.json -o data/A_vocgm -d A_vocgm.json -r A_vocgm_report.json
     deps:
     - src/preprocessing/vocgm_dataset.py
     - data/A/traindata_3.json
     - data/vocgm/vocgm.json
-    - resources/tagsets/ner_tagset.json
+    - resources/tagsets/globalise_tagset.json
     - resources/tagsets/vocgm_tagset.json
     outs:
     - data/A_vocgm/A_vocgm.json
     - data/A_vocgm/A_vocgm_report.json
   augment_with_vocgm_threshold0.05:
     cmd: python src/preprocessing/vocgm_dataset.py augment -e 0.05 
-      -d A_vocgm_edt005.json -r A_vocgm_edt005_report.json
+      -i data/A/traindata_3.json -o data/A_vocgm -d A_vocgm_edt005.json -r A_vocgm_edt005_report.json
     deps:
     - src/preprocessing/vocgm_dataset.py
     - data/A/traindata_3.json
     - data/vocgm/vocgm.json
-    - resources/tagsets/ner_tagset.json
+    - resources/tagsets/globalise_tagset.json
     - resources/tagsets/vocgm_tagset.json
     outs:
     - data/A_vocgm/A_vocgm_edt005.json
     - data/A_vocgm/A_vocgm_edt005_report.json
   augment_with_vocgm_threshold0.1:
     cmd: python src/preprocessing/vocgm_dataset.py augment -e 0.1 
-      -d A_vocgm_edt01.json -r A_vocgm_edt01_report.json
+      -i data/A/traindata_3.json -o data/A_vocgm -d A_vocgm_edt01.json -r A_vocgm_edt01_report.json
     deps:
     - src/preprocessing/vocgm_dataset.py
     - data/A/traindata_3.json
     - data/vocgm/vocgm.json
-    - resources/tagsets/ner_tagset.json
+    - resources/tagsets/globalise_tagset.json
     - resources/tagsets/vocgm_tagset.json
     outs:
     - data/A_vocgm/A_vocgm_edt01.json
@@ -77,9 +77,59 @@ stages:
     - src/preprocessing/vocgm_dataset.py
     - data/AB/AB.json
     - data/vocgm/vocgm.json
-    - resources/tagsets/ner_tagset.json
+    - resources/tagsets/globalise_tagset.json
     - resources/tagsets/vocgm_tagset.json
     outs:
     - data/AB_vocgm/AB_vocgm.json
     - data/AB_vocgm/AB_vocgm_report.json
-
+  prepare_vocgm_hist:
+    cmd: python src/preprocessing/vocgm_dataset.py create -o data/vocgm_hist --historical
+    deps:
+    - src/preprocessing/vocgm_dataset.py
+    - src/preprocessing/dataset.py
+    outs:
+    - data/vocgm_hist/missive_3_9_text.conll
+    - data/vocgm_hist/missive_6_67_text.conll
+    - data/vocgm_hist/missive_4_14_text.conll
+    - data/vocgm_hist/missive_10_11_text.conll
+    - data/vocgm_hist/missive_1_67_text.conll
+    - data/vocgm_hist/missive_5_28_text.conll
+    - data/vocgm_hist/missive_5_7_text.conll
+    - data/vocgm_hist/missive_6_3_text.conll
+    - data/vocgm_hist/missive_4_49_text.conll
+    - data/vocgm_hist/missive_7_8_text.conll
+    - data/vocgm_hist/missive_1_49_text.conll
+    - data/vocgm_hist/missive_3_62_text.conll
+    - data/vocgm_hist/missive_8_6_text.conll
+    - data/vocgm_hist/missive_2_18_text.conll
+    - data/vocgm_hist/missive_10_15_text.conll
+    - data/vocgm_hist/missive_13_15_text.conll
+    - data/vocgm_hist/missive_13_12_text.conll 
+    - data/vocgm_hist/missive_11_9_text.conll
+    - data/vocgm_hist/missive_9_15_text.conll
+    - data/vocgm_hist/missive_11_5_text.conll
+    - data/vocgm_hist/missive_9_9_text.conll
+    - data/vocgm_hist/missive_6_32_text.conll
+    - data/vocgm_hist/vocgm.json
+    - data/vocgm_hist/vocgm_report.json
+  inference_training_data:
+    cmd: python src/preprocessing/dataset.py -i data/annotations/inference_training.zip -o data/inference inference-training -v
+    deps:
+    - src/preprocessing/dataset.py
+    - resources/TypeSystem.xml 
+    - data/annotations/inference_training.zip
+    outs:
+    - data/inference/globalise.json
+    - data/inference/report.json
+  augment_inference_training_with_vocgm_hist:
+    cmd: python src/preprocessing/vocgm_dataset.py augment -i data/inference/globalise.json -a data/vocgm_hist/vocgm.json 
+      -o data/inference -d globalise_vocgm_hist.json -r globalise_vocgm_report.json
+    deps:
+    - src/preprocessing/vocgm_dataset.py
+    - data/inference/globalise.json
+    - data/vocgm_hist/vocgm.json
+    - resources/tagsets/globalise_tagset.json
+    - resources/tagsets/vocgm_tagset.json
+    outs:
+    - data/inference/globalise_vocgm_hist.json
+    - data/inference/globalise_vocgm_report.json

@@ -1,0 +1,23 @@
+# pytorch-lightning==2.2.4
+seed_everything: 23052024
+data:
+  class_path: inference.InvnrDataModule
+  init_args:
+    inputdir: data/inference
+    typesystem: resources/TypeSystem.xml
+    tagset: resources/tagsets/globalise_tagset.json
+    max_nb_tokens: 200
+    num_workers: 16
+    pretrained_model: globalise/globalise-NER
+model:
+  class_path: models.NERModel
+trainer:
+  accelerator: auto
+  strategy: auto
+  devices: 1
+  num_nodes: 1
+  precision: 32-true
+  callbacks:
+    - class_path: inference.InvnrWriter
+      init_args:
+        outdir: data/inference/output 

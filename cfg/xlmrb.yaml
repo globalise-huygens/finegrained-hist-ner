@@ -6,7 +6,7 @@ data:
     dataset: data/A/traindata_3.json
     batch_size: 32
     num_workers: 18
-    tagset_path: resources/tagsets/ner_tagset.json
+    tagset_path: resources/tagsets/globalise_tagset.json
     pretrained_model: xlm-roberta-base
     data_pkl: A_xlmrb.pkl
     use_unk_classes: false
@@ -14,8 +14,7 @@ model:
   class_path: models.NERModel
   init_args:
     learning_rate: 4.0e-05
-    weighted_loss: false
-    report_unk_class_pmass: false
+    reallocate_unseen_class_pmass: false
 trainer:
   accelerator: auto
   strategy: auto

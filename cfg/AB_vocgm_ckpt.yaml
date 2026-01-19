@@ -6,7 +6,7 @@ data:
     dataset: data/AB_vocgm/AB_vocgm.json
     batch_size: 32
     num_workers: 18
-    tagset_path: resources/tagsets/ner_tagset.json
+    tagset_path: resources/tagsets/globalise_tagset.json
     pretrained_model: globalise/gloBERTise
     data_pkl: AB_vocgm_globertise.pkl
     use_unk_classes: true
@@ -14,8 +14,7 @@ model:
   class_path: models.NERModel
   init_args:
     learning_rate: 4.0e-05
-    report_unk_class_pmass: true
-    weighted_loss: false
+    reallocate_unseen_class_pmass: true
 trainer:
   accelerator: auto
   strategy: auto

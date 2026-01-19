@@ -2,13 +2,16 @@ import json
 import lightning as L
 import torch
 from torchmetrics.classification import MulticlassF1Score
-from torch.optim.lr_scheduler import ReduceLROnPlateau
+from torch.optim.lr_scheduler import StepLR, ReduceLROnPlateau
 from transformers import AutoTokenizer, AutoModelForTokenClassification
 
 
-def define_model(num_labels, freeze_model_params, pretrained_model):
+def define_model(num_labels, freeze_model_params, pretrained_model, use_safetensors):
     model = AutoModelForTokenClassification.from_pretrained(
-        pretrained_model, num_labels=num_labels, ignore_mismatched_sizes=True
+        pretrained_model,
+        num_labels=num_labels,
+        ignore_mismatched_sizes=True,
+        use_safetensors=use_safetensors,
     )
     model.train()
     if freeze_model_params:
@@ -26,14 +29,14 @@ def freeze_all_but_classifier(model):
 class NERModel(L.LightningModule):
     def __init__(
         self,
-        tagset_path="resources/tagsets/ner_tagset.json",
+        tagset_path="resources/tagsets/globalise_tagset.json",
         learning_rate=1e-5,
         pretrained_model="globalise/gloBERTise",
         freeze_model_params=False,
         batch_size=32,
-        weighted_loss=False,
-        class_weights_path=None,
-        report_unk_class_pmass=True,
+        reallocate_unseen_class_pmass=True,
+        use_safetensors=True,
+        monitor_scheduler=True,
     ):
         super().__init__()
         with open(tagset_path) as f:
@@ -44,26 +47,17 @@ class NERModel(L.LightningModule):
             pretrained_model, add_prefix_space=True
         )
         self.model = define_model(
-            self.num_labels, freeze_model_params, pretrained_model
+            self.num_labels, freeze_model_params, pretrained_model, use_safetensors
         )
-        self.class_weights_path = class_weights_path
         self.batch_size = batch_size
-        weights = None
-        if weighted_loss:
-            if class_weights_path is None:
-                raise AttributeError(
-                    "Missing class weights path for weighted-class loss"
-                )
-            with open(class_weights_path) as f:
-                weights = torch.tensor(json.load(f), requires_grad=False)
 
-        self.val_loss_fn = torch.nn.CrossEntropyLoss(weight=weights)
+        self.val_loss_fn = torch.nn.CrossEntropyLoss()
 
-        if report_unk_class_pmass:
-            self.loss_fn = torch.nn.NLLLoss(weight=weights)
-            self.compute_loss_fn = self.compute_loss_unk_classes
+        if reallocate_unseen_class_pmass:
+            self.loss_fn = torch.nn.NLLLoss()
+            self.compute_loss_fn = self.compute_loss_with_unk_class_reallocation
         else:
-            self.loss_fn = torch.nn.CrossEntropyLoss(weight=weights)
+            self.loss_fn = torch.nn.CrossEntropyLoss()
             self.compute_loss_fn = self.compute_loss
 
         self.micro_f1 = MulticlassF1Score(num_classes=self.num_labels, average="micro")
@@ -78,10 +72,7 @@ class NERModel(L.LightningModule):
             num_classes=self.num_labels,
             average="weighted",
         )
-        self.weighted_f1 = MulticlassF1Score(
-            num_classes=self.num_labels,
-            average="weighted",
-        )
+        self.monitored_scheduler = monitor_scheduler
         self.save_hyperparameters(ignore=["tagset_path"])
 
     def forward(self, input_ids, attention_mask, labels=None, **kwargs):
@@ -94,7 +85,7 @@ class NERModel(L.LightningModule):
             batch["labels"].view(-1),
         )
 
-    def compute_loss_unk_classes(self, batch):
+    def compute_loss_with_unk_class_reallocation(self, batch):
         outputs = self(**batch)
         log_softmax = torch.nn.LogSoftmax(dim=2)
         softmax = torch.nn.Softmax(dim=2)
@@ -142,8 +133,6 @@ class NERModel(L.LightningModule):
         true_labels = batch["labels"][token_starts]
         self.micro_f1(predictions, true_labels)
         self.log("micro_f1", self.micro_f1)
-        self.weighted_f1(predictions, true_labels)
-        self.log("weighted_f1", self.weighted_f1)
 
         predictions, true_labels = self.correct_zero_predictions(batch, logits)
 
@@ -178,17 +167,24 @@ class NERModel(L.LightningModule):
         return predictions, true_labels
 
     def predict_step(self, batch, batch_idx):
-        outputs = self(batch["input_ids"], attention_mask=batch["attention_mask"])
-        return outputs["logits"]
+        outputs = self(**batch)
+        # outputs = self(batch["input_ids"], attention_mask=batch["attention_mask"])
+        logits = outputs["logits"]
+        token_starts = batch["token_mask"].nonzero(as_tuple=True)
+        predictions = torch.argmax(
+            logits[token_starts], 1
+        )  # 1-dim tensor, with length of token starts in batch
+        return predictions
 
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(self.parameters(), lr=self.learning_rate)
-        return {
-            "optimizer": optimizer,
-            "lr_scheduler": {
+        if self.monitored_scheduler:
+            lr_scheduler = {
                 "scheduler": ReduceLROnPlateau(
                     optimizer, mode="max", factor=0.5, patience=3
                 ),
                 "monitor": "micro_corr_f1",
-            },
-        }
+            }
+        else:
+            lr_scheduler = {"scheduler": StepLR(optimizer, step_size=15, gamma=0.5)}
+        return {"optimizer": optimizer, "lr_scheduler": lr_scheduler}
